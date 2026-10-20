@@ -5,8 +5,8 @@ const status = $("#status");
 const chip = $("#chip");
 const viewer = $("#viewer");
 
-let current = null; // foto abierta en el visor
-let lastRequest = 0; // para descartar respuestas de búsquedas que ya no importan
+let current = null; // currently open photo in the viewer
+let lastRequest = 0; // used to discard stale search responses
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -40,19 +40,19 @@ function setChip(src) {
 
 function showLatest() {
   setChip(null);
-  load("/api/photos", {}, (d) => `${plural(d.results.length, "foto")} recientes`);
+  load("/api/photos", {}, (d) => `${plural(d.results.length, "photo")} recent`);
 }
 
 function searchText(text) {
   setChip(null);
   if (!text.trim()) return showLatest();
-  load(`/api/search?q=${encodeURIComponent(text)}`, {}, (d) => `${plural(d.results.length, "foto")} · ${d.ms} ms`);
+  load(`/api/search?q=${encodeURIComponent(text)}`, {}, (d) => `${plural(d.results.length, "photo")} · ${d.ms} ms`);
 }
 
 function searchSimilar(photo) {
   query.value = "";
   setChip(photo.thumb);
-  load(`/api/similar/${photo.id}`, {}, (d) => `${plural(d.results.length, "foto")} parecidas · ${d.ms} ms`);
+  load(`/api/similar/${photo.id}`, {}, (d) => `${plural(d.results.length, "photo")} similar · ${d.ms} ms`);
 }
 
 function searchByImage(file) {
@@ -60,10 +60,10 @@ function searchByImage(file) {
   setChip(URL.createObjectURL(file));
   const body = new FormData();
   body.append("file", file);
-  load("/api/search-by-image", { method: "POST", body }, (d) => `${plural(d.results.length, "foto")} parecidas · ${d.ms} ms`);
+  load("/api/search-by-image", { method: "POST", body }, (d) => `${plural(d.results.length, "photo")} similar · ${d.ms} ms`);
 }
 
-// Búsqueda mientras escribes, con un pequeño margen entre teclas
+// Search as you type, with a small debounce delay
 let typingTimer;
 query.addEventListener("input", () => {
   clearTimeout(typingTimer);
@@ -78,12 +78,12 @@ chip.querySelector("button").onclick = () => {
   query.focus();
 };
 
-// Visor
+// Photo viewer
 function openViewer(photo) {
   current = photo;
   $("#viewer-img").src = `/api/photos/${photo.id}/original`;
   $("#viewer-date").textContent = photo.taken_at
-    ? new Date(photo.taken_at).toLocaleDateString("es-ES", { dateStyle: "long" })
+    ? new Date(photo.taken_at).toLocaleDateString("en-US", { dateStyle: "long" })
     : "";
   viewer.showModal();
 }
@@ -96,7 +96,7 @@ viewer.addEventListener("click", (event) => {
   if (event.target === viewer) viewer.close();
 });
 
-// Arrastrar una foto desde el escritorio
+// Drag and drop an image from the desktop
 const drop = $("#drop");
 addEventListener("dragover", (event) => {
   event.preventDefault();
