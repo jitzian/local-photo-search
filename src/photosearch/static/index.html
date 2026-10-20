@@ -1,27 +1,27 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tus fotos</title>
+  <title>Your Photos</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
     <p class="kicker"><span class="dot"></span>EmbeddingGemma 2 · 100% local</p>
-    <h1>Tus fotos</h1>
+    <h1>Your Photos</h1>
     <form id="search" autocomplete="off">
       <div id="chip" hidden>
         <img alt="">
-        <span>Parecidas a esta</span>
-        <button type="button" aria-label="Quitar">×</button>
+        <span>Similar to this</span>
+        <button type="button" aria-label="Clear">×</button>
       </div>
       <input id="query" type="search" autofocus
-             placeholder="Busca lo que quieras: «un perro», «algo para cenar»… o arrastra una foto">
+             placeholder="Search anything: &quot;a dog&quot;, &quot;something to eat&quot;… or drag a photo here">
     </form>
     <div class="meta">
       <span id="status"></span>
-      <label class="toggle"><input id="scores" type="checkbox"> Puntuaciones</label>
+      <label class="toggle"><input id="scores" type="checkbox"> Scores</label>
     </div>
   </header>
 
@@ -31,12 +31,12 @@
     <img id="viewer-img" alt="">
     <div class="viewer-bar">
       <span id="viewer-date"></span>
-      <button id="more" class="pill">Más como esta</button>
-      <button id="close" class="ghost">Cerrar</button>
+      <button id="more" class="pill">More like this</button>
+      <button id="close" class="ghost">Close</button>
     </div>
   </dialog>
 
-  <div id="drop">Suelta la foto para buscar parecidas</div>
+  <div id="drop">Drop a photo here to find similar ones</div>
 
   <script src="app.js"></script>
 </body>

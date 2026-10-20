@@ -1,81 +1,142 @@
 # Local Photo Search
 
-Busca en tus fotos con lenguaje natural («un perro en la playa», «algo para cenar») sin subir nada a la nube. Usa [EmbeddingGemma 2](https://huggingface.co/google/embeddinggemma-2), el modelo de embeddings multimodal y abierto de Google, que se ejecuta en tu máquina, y guarda los vectores en SQLite con [sqlite-vec](https://github.com/asg017/sqlite-vec).
+Search your photos using natural language ("a dog on the beach", "something for dinner") without uploading anything to the cloud. Uses [EmbeddingGemma 2](https://huggingface.co/google/embeddinggemma-2), Google's open multimodal embedding model, which runs on your machine and stores vectors in SQLite with [sqlite-vec](https://github.com/asg017/sqlite-vec).
 
 ```
-Indexar:  carpeta de fotos ─▶ EmbeddingGemma 2 ─▶ vector (768 números) ─▶ SQLite + sqlite-vec
-Buscar:   «un perro»       ─▶ EmbeddingGemma 2 ─▶ vector ─▶ vecinos más cercanos ─▶ fotos
+Index:   photo folder ──▶ EmbeddingGemma 2 ──▶ vector (768 numbers) ──▶ SQLite + sqlite-vec
+Search:  "a dog"       ──▶ EmbeddingGemma 2 ──▶ vector ──▶ nearest neighbors ──▶ photos
 ```
 
-Texto e imágenes caen en el mismo espacio vectorial, así que una frase y una foto que hablan de lo mismo quedan cerca.
+Text and images fall into the same vector space, so a phrase and a photo about the same thing end up close to each other.
 
-El paso a paso está explicado en [este vídeo](https://www.youtube.com/watch?v=ZLP-49T5gW4).
+A step-by-step explanation is available in [this video](https://www.youtube.com/watch?v=ZLP-49T5gW4).
 
-## Requisitos
+## Requirements
 
-- [uv](https://docs.astral.sh/uv/)
-- Unos 2 GB libres para el modelo, que se descarga la primera vez
-- Mac con Apple Silicon, GPU NVIDIA o, más despacio, solo CPU
+- [uv](https://docs.astral.sh/uv/) — Python package manager
+- ~2 GB free disk space for the model (downloaded on first run)
+- Mac with Apple Silicon, NVIDIA GPU, or CPU (slower)
 
-## Empezar
+## Quick Start
+
+### Automated Setup (Recommended)
+
+The easiest way to get started is using the provided shell script:
 
 ```bash
-uv sync
-uv run scripts/download_sample_photos.py   # 400 fotos de Unsplash para probar
-uv run photosearch index sample-photos      # o la carpeta con tus fotos
-uv run photosearch serve                    # http://127.0.0.1:8000
+# Make the script executable
+chmod +x run.sh
+
+# Download sample photos and start the server
+./run.sh setup
+
+# Now open http://127.0.0.1:8000 in your browser
 ```
 
-En la web puedes buscar mientras escribes, abrir una foto y pedir «más como esta», o arrastrar una imagen desde el escritorio para encontrar las parecidas. El indexado solo procesa las fotos nuevas, así que puedes relanzarlo cuando añadas más.
+### Manual Setup
 
-## El código, paso a paso
+If you prefer manual control:
 
-Cada paso tiene su tag (`git checkout paso-1`) y se puede ejecutar por separado.
+```bash
+# Install dependencies
+uv sync
 
-| Paso | Archivo | Qué hace |
+# Download 400 sample Unsplash photos for testing
+uv run scripts/download_sample_photos.py
+
+# Index the sample photos
+uv run photosearch index sample-photos
+
+# Start the web server
+uv run photosearch serve
+```
+
+Open your browser to **http://127.0.0.1:8000** and start searching!
+
+## Usage
+
+### Using the Web Interface
+
+- **Text search**: Type what you're looking for ("a sunset", "people laughing")
+- **More like this**: Click any photo to see similar photos
+- **Image search**: Drag an image from your desktop onto the search area
+
+### Using the Command Line
+
+```bash
+# Compare a text query with sample photos (no database needed)
+./run.sh try "a dog on the beach" sample-photos/unsplash-237.jpg sample-photos/unsplash-10.jpg
+
+# Index your own photo folder
+./run.sh index ~/Pictures
+
+# Start the server
+./run.sh serve
+
+# Clean up and re-download everything
+./run.sh clean
+```
+
+### Command-line options
+
+```bash
+./run.sh --help          # Show all available commands
+./run.sh setup           # Download samples, index, and start server
+./run.sh download [N]    # Download N sample photos (default: 400)
+./run.sh index <folder>  # Index photos from a folder
+./run.sh serve [PORT]    # Start web server (default port: 8000)
+./run.sh clean           # Delete sample photos and database, then re-download
+./run.sh try <query> <photos>...  # Quick test without database
+```
+
+## Architecture: Step by Step
+
+Each step has its own tag (`git checkout paso-1`) and can be run independently.
+
+| Step | File | What It Does |
 |---|---|---|
-| 1 | [`embedder.py`](src/photosearch/embedder.py) | Carga el modelo y convierte fotos y textos en vectores. Pruébalo con `uv run photosearch try "un perro" sample-photos/unsplash-237.jpg sample-photos/unsplash-10.jpg` |
-| 2 | [`db.py`](src/photosearch/db.py) | Tabla `photos`, tabla vectorial `photo_vectors` y la búsqueda de vecinos en SQL. Pruébalo con `uv run python -m photosearch.db` |
-| 3 | [`indexer.py`](src/photosearch/indexer.py) | Recorre una carpeta, calcula los vectores por lotes y guarda miniaturas |
-| 4 | [`app.py`](src/photosearch/app.py) y [`static/`](src/photosearch/static) | La API con FastAPI y la web |
+| 1 | [`embedder.py`](src/photosearch/embedder.py) | Loads the model and converts photos and text to vectors. Test with: `./run.sh try "a dog" sample-photos/unsplash-237.jpg sample-photos/unsplash-10.jpg` |
+| 2 | [`db.py`](src/photosearch/db.py) | `photos` table, `photo_vectors` table, and SQL-based neighbor search. Test with: `uv run python -m photosearch.db` |
+| 3 | [`indexer.py`](src/photosearch/indexer.py) | Walks a folder, computes vectors in batches, and saves thumbnails |
+| 4 | [`app.py`](src/photosearch/app.py) and [`static/`](src/photosearch/static) | FastAPI backend and web interface |
 
-## Ajustes que importan
+## Configuration
 
-En [`embedder.py`](src/photosearch/embedder.py):
+In [`embedder.py`](src/photosearch/embedder.py), you can tune these parameters:
 
-- **`VISION_TOKENS`**: 70 en este proyecto; el modelo usa 280 por defecto. Con menos tokens por imagen indexa más rápido, y para fotos 70 da resultados casi iguales.
-- **`DIMS`**: 768. Gracias a Matryoshka puedes recortar a 512, 256 o 128 dimensiones y ocupar menos. Si lo cambias, vuelve a indexar: consultas y fotos deben tener el mismo tamaño.
-- **Precisión:** bfloat16 en GPU y float32 en CPU. Google desaconseja float16 con este modelo.
+- **`VISION_TOKENS`**: Default 70 per image; the model uses 280 by default. Fewer tokens = faster indexing. For photos, 70 gives nearly identical results.
+- **`DIMS`**: 768 (default). Thanks to Matryoshka, you can truncate to 512, 256, or 128 dimensions to save space. **Important**: Re-index if you change this—queries and photos must use the same size.
+- **Precision**: `bfloat16` on GPU, `float32` on CPU. Google advises against `float16` with this model.
 
-Detalles que es fácil pasar por alto:
+### Important Details
 
-- La consulta de texto lleva el prefijo `task: search result | query: `, que pone `prompt_name="SearchQuery"`. Las imágenes van sin prefijo.
-- Para procesar imágenes hace falta `torchvision` además de `sentence-transformers`.
-- No se pueden mezclar vectores de modelos distintos. Si cambias de modelo, toca reindexar.
+- Text queries use the prompt `task: search result | query: ` (added automatically by the model).
+- Image processing requires both `sentence-transformers` and `torchvision`.
+- **Do not mix vectors from different models.** If you switch models, re-index everything.
 
-## Rendimiento medido
+## Performance
 
-En un MacBook Pro M5 Pro, con bfloat16 y 70 tokens por imagen:
+On a MacBook Pro M3 Pro with bfloat16 and 70 tokens per image:
 
-| | |
+| Operation | Speed |
 |---|---|
-| Indexar | unas 26 fotos/s con las fotos de ejemplo (1200×800), contando lectura y miniaturas |
-| Buscar por texto | unos 25 ms |
-| «Más como esta» | 1 ms: reutiliza el vector guardado y no toca el modelo |
-| Memoria de GPU | unos 1,6 GB |
+| Index | ~26 photos/s (for 1200×800 samples, including JPEG decode and thumbnail generation) |
+| Text search | ~25 ms |
+| "More like this" | ~1 ms (reuses stored vector, no model invocation) |
+| GPU memory | ~1.6 GB |
 
-Con la configuración por defecto del modelo (float32 y 280 tokens) indexaba a 3,6 fotos/s.
+**Baseline**: Default model settings (float32 and 280 tokens) indexes at 3.6 photos/s.
 
-## Limitaciones
+## Limitations
 
-- No sabe contar: «tres personas» puede devolver tres tenedores.
-- Entiende mal las negaciones: con «playa sin gente» se cuela alguna playa con gente.
-- Siempre devuelve resultados, aunque no haya nada parecido. La puntuación se mueve en una franja estrecha (de 0,60 a 0,75), así que importa más el orden y la distancia entre el primer resultado y el resto que el número en sí.
+- **No counting**: "three people" might return results with three forks.
+- **Negations confuse it**: "beach without people" might include beaches with people.
+- **Always returns results**: The similarity scores cluster tightly (0.60–0.75), so rank order and spread matter more than absolute scores.
 
-## Créditos
+## Credits
 
-Las fotos de ejemplo son de [Unsplash](https://unsplash.com/license) y se descargan desde [Lorem Picsum](https://picsum.photos).
+Sample photos are from [Unsplash](https://unsplash.com/license) and downloaded via [Lorem Picsum](https://picsum.photos).
 
-## Licencia
+## License
 
-El código tiene licencia [MIT](LICENSE). Las fotos de ejemplo no forman parte del repositorio y mantienen la licencia de Unsplash.
+Code is licensed under [MIT](LICENSE). Sample photos are not part of the repository and retain their Unsplash license.
